@@ -1,36 +1,44 @@
 import mysql.connector
-try:
-    conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="123456789",
-        database="project_2"
-    )
-    print("\nPřipojení k databázi bylo úspěšné.")
-except mysql.connector.Error as err:
-    print(f"\nChyba při připojování: {err}")
-cursor = conn.cursor()
-try:
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS ukoly (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            nazev VARCHAR(50),
-            popis TEXT,
-            stav VARCHAR (20) DEFAULT 'Nezahájeno',
-            datum DATE
+from datetime import date
+def pripojeni_db():
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="123456789",
+            database="project_2"
         )
-    ''')
-    print("Tabulka 'ukoly' je připravena.\n")
-except mysql.connector.Error as err:
-    print(f"Chyba při vytváření tabulky: {err}")
-def pridat_ukol():
+        print("\nPřipojení k databázi bylo úspěšné.")
+        cursor = conn.cursor()
+        return conn, cursor
+    except mysql.connector.Error as err:
+        print(f"\nChyba při připojování: {err}")
+        return None, None
+def vytvoreni_tabulky(cursor, conn):
+    try:
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ukoly (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                nazev VARCHAR(50),
+                popis TEXT,
+                stav VARCHAR (20) DEFAULT 'Nezahájeno',
+                datum DATE
+            )
+        ''')
+        conn.commit()
+        print("Tabulka 'ukoly' je připravena.\n")
+    except mysql.connector.Error as err:
+        print(f"Chyba při vytváření tabulky: {err}")
+conn, cursor = pripojeni_db()
+if conn is not None and cursor is not None:
+    vytvoreni_tabulky(cursor, conn)
+def pridat_ukol(cursor, conn):
     nazev_ukolu=input("\nZadejte název úkolu: ").strip()
     while not nazev_ukolu:
-        nazev_ukolu=input("Zadali jste prázdný název úkolu. Prosím zadejte znovu: ")
+        nazev_ukolu=input("Zadali jste prázdný název úkolu. Prosím zadejte znovu: ").strip()
     popis_ukolu=input("Zadejte popis úkolu: ").strip()
     while not popis_ukolu:
         popis_ukolu=input(f"Zadali jste prázdný popis k úkolu {nazev_ukolu}. Zadejte popis: ").strip()
-    from datetime import date
     datum_vytvoreni=date.today()
     novy_ukol = (nazev_ukolu, popis_ukolu, datum_vytvoreni)
     try:
@@ -40,7 +48,7 @@ def pridat_ukol():
         print(f"Úkol '{nazev_ukolu}' byl přidán.\n")
     except mysql.connector.Error as err:
         print(f"Chyba při vkládání dat: {err}\n")
-def zobrazit_ukoly():
+def zobrazit_ukoly(cursor, conn):
     cursor.execute("SELECT id, nazev, popis, stav FROM ukoly WHERE stav != 'Hotovo'")
     ukoly=cursor.fetchall()
     if not ukoly:
@@ -50,7 +58,7 @@ def zobrazit_ukoly():
     for row in ukoly: 
         print(f"ID: {row[0]} | Název: {row[1]} | Popis: {row[2]} | Stav: {row[3]}")
     print()
-def aktualizovat_ukol():
+def aktualizovat_ukol(cursor, conn):
     cursor.execute("SELECT id, nazev, stav FROM ukoly")
     ukoly=cursor.fetchall()
     if not ukoly:
@@ -71,9 +79,9 @@ def aktualizovat_ukol():
                 while cislo_stavu not in ("1", "2"):
                     cislo_stavu=input("Vyberte prosím možnost 1 nebo 2: ")
                 if cislo_stavu =="1":
-                    stav_ukolu=('Probíhá')
+                    stav_ukolu='Probíhá'
                 elif cislo_stavu =="2":
-                    stav_ukolu=('Hotovo')
+                    stav_ukolu='Hotovo'
                 cursor.execute("UPDATE ukoly SET stav = %s WHERE id = %s", (stav_ukolu, id_ukolu))
                 conn.commit()
                 print(f"Úkol č. {id_ukolu} byl aktualizován a nyní je ve stavu {stav_ukolu}.\n")
@@ -82,7 +90,7 @@ def aktualizovat_ukol():
                 print("Chyba. Úkol s tímto číslem neexistuje.")
         except ValueError:
             print("Zadejte prosím číslo.")
-def odstranit_ukol():
+def odstranit_ukol(cursor, conn):
     cursor.execute("SELECT id, nazev, popis, stav, datum FROM ukoly")
     ukoly=cursor.fetchall()
     if not ukoly:
@@ -118,16 +126,16 @@ def hlavni_menu():
             user_input=input("Prosím vyberte platnou možnost (1-5): ")
         if user_input=="1":
             print ("\nVybrali jste 1 - Přidat úkol")
-            pridat_ukol()
+            pridat_ukol(cursor, conn)
         elif user_input=="2":
             print("\nVybrali jste 2 - Zobrazit úkoly")
-            zobrazit_ukoly()
+            zobrazit_ukoly(cursor, conn)
         elif user_input=="3":
             print("\nVybrali jste 3 - Aktualizovat úkol")
-            aktualizovat_ukol()
+            aktualizovat_ukol(cursor, conn)
         elif user_input=="4":
             print("\nVybrali jste 4 - Odstranit úkol")
-            odstranit_ukol()
+            odstranit_ukol(cursor, conn)
         elif user_input=="5":
             cursor.close() 
             conn.close() 

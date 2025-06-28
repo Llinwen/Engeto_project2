@@ -1,5 +1,6 @@
 import pytest
 import mysql.connector
+from datetime import date
 @pytest.fixture(scope="function")
 def db_setup():
     conn = mysql.connector.connect(
