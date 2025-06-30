@@ -10,11 +10,11 @@ def pripojeni_db():
         )
         print("\nPřipojení k databázi bylo úspěšné.")
         cursor = conn.cursor()
-        return conn, cursor
+        return conn, cursor, None
     except mysql.connector.Error as err:
         print(f"\nChyba při připojování: {err}")
-        return None, None
-def vytvoreni_tabulky(cursor, conn):
+        return None, None, err
+def vytvoreni_tabulky(conn, cursor):
     try:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS ukoly (
@@ -29,10 +29,15 @@ def vytvoreni_tabulky(cursor, conn):
         print("Tabulka 'ukoly' je připravena.\n")
     except mysql.connector.Error as err:
         print(f"Chyba při vytváření tabulky: {err}")
-conn, cursor = pripojeni_db()
-if conn is not None and cursor is not None:
-    vytvoreni_tabulky(cursor, conn)
-def pridat_ukol(cursor, conn):
+def inicializace_pripojeni():
+    conn, cursor, err = pripojeni_db()
+    if conn is not None and cursor is not None:
+        vytvoreni_tabulky(conn, cursor)
+        return(conn, cursor)
+    else:
+        print(f"\nChyba při připojování: {err}")
+        return None, None
+def pridat_ukol(conn, cursor):
     nazev_ukolu=input("\nZadejte název úkolu: ").strip()
     while not nazev_ukolu:
         nazev_ukolu=input("Zadali jste prázdný název úkolu. Prosím zadejte znovu: ").strip()
@@ -48,7 +53,7 @@ def pridat_ukol(cursor, conn):
         print(f"Úkol '{nazev_ukolu}' byl přidán.\n")
     except mysql.connector.Error as err:
         print(f"Chyba při vkládání dat: {err}\n")
-def zobrazit_ukoly(cursor, conn):
+def zobrazit_ukoly(conn, cursor):
     cursor.execute("SELECT id, nazev, popis, stav FROM ukoly WHERE stav != 'Hotovo'")
     ukoly=cursor.fetchall()
     if not ukoly:
@@ -58,7 +63,10 @@ def zobrazit_ukoly(cursor, conn):
     for row in ukoly: 
         print(f"ID: {row[0]} | Název: {row[1]} | Popis: {row[2]} | Stav: {row[3]}")
     print()
-def aktualizovat_ukol(cursor, conn):
+def existuje_ukol(cursor, id_ukolu):
+    cursor.execute("SELECT 1 FROM ukoly WHERE id = %s", (id_ukolu,))
+    return cursor.fetchone() is not None 
+def aktualizovat_ukol(conn, cursor):
     cursor.execute("SELECT id, nazev, stav FROM ukoly")
     ukoly=cursor.fetchall()
     if not ukoly:
@@ -70,9 +78,7 @@ def aktualizovat_ukol(cursor, conn):
     while True:
         try:
             id_ukolu=int(input("Zadejte číslo úkolu, který chcete aktualizovat: "))
-            cursor.execute("SELECT 1 FROM ukoly WHERE id = %s", (id_ukolu,))
-            rows_returned=cursor.fetchone() 
-            if rows_returned is not None:
+            if existuje_ukol(cursor, id_ukolu):
                 print("\nVyberte 1 pro změnu stavu na Probíhá\n" \
                     "Vyberte 2 pro změnu stavu na Hotovo")
                 cislo_stavu=input("Vyberte možnost 1 nebo 2: ")
@@ -90,7 +96,7 @@ def aktualizovat_ukol(cursor, conn):
                 print("Chyba. Úkol s tímto číslem neexistuje.")
         except ValueError:
             print("Zadejte prosím číslo.")
-def odstranit_ukol(cursor, conn):
+def odstranit_ukol(conn, cursor):
     cursor.execute("SELECT id, nazev, popis, stav, datum FROM ukoly")
     ukoly=cursor.fetchall()
     if not ukoly:
@@ -102,9 +108,7 @@ def odstranit_ukol(cursor, conn):
     while True:
         try:
             id_ukolu=int(input("\nZadejte číslo úkolu, který chcete odstranit: ")) 
-            cursor.execute("SELECT 1 FROM ukoly WHERE id = %s", (id_ukolu,))
-            rows_returned=cursor.fetchone()
-            if rows_returned is not None:
+            if existuje_ukol(cursor, id_ukolu):
                 cursor.execute("DELETE from ukoly WHERE id = %s",  (id_ukolu,))
                 conn.commit()
                 print(f"\nÚkol č. {id_ukolu} byl odstraněn.\n")
@@ -114,6 +118,7 @@ def odstranit_ukol(cursor, conn):
         except ValueError:
             print("Chyba. Zadejte platné číslo úkolu.")
 def hlavni_menu():
+    conn, cursor = inicializace_pripojeni()
     while True:
         print("Správce úkolů: Hlavní menu\n" \
         "1. Přidat nový úkol\n" \
@@ -126,16 +131,16 @@ def hlavni_menu():
             user_input=input("Prosím vyberte platnou možnost (1-5): ")
         if user_input=="1":
             print ("\nVybrali jste 1 - Přidat úkol")
-            pridat_ukol(cursor, conn)
+            pridat_ukol(conn, cursor)
         elif user_input=="2":
             print("\nVybrali jste 2 - Zobrazit úkoly")
-            zobrazit_ukoly(cursor, conn)
+            zobrazit_ukoly(conn, cursor)
         elif user_input=="3":
             print("\nVybrali jste 3 - Aktualizovat úkol")
-            aktualizovat_ukol(cursor, conn)
+            aktualizovat_ukol(conn, cursor)
         elif user_input=="4":
             print("\nVybrali jste 4 - Odstranit úkol")
-            odstranit_ukol(cursor, conn)
+            odstranit_ukol(conn, cursor)
         elif user_input=="5":
             cursor.close() 
             conn.close() 

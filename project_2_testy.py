@@ -37,7 +37,7 @@ def test_pridat_ukol(db_setup):
     assert result[2] == "Testovací úkol", "Popis není správný."
 def test_pridat_neplatny_ukol(db_setup):
     conn, cursor = db_setup
-    with pytest.raises(mysql.connector.Error, match="Data too long"):
+    with pytest.raises(mysql.connector.Error, match=r".*Data too long for column 'nazev' at row \d+"):
         cursor.execute("INSERT INTO test_ukoly (nazev) VALUES (%s)", ('a' * 51))
         conn.commit()
 #testy pro aktualizovat_ukol
@@ -58,7 +58,7 @@ def test_aktualizovat_neexistujici_ukol(db_setup):
     puvodni_pocet = cursor.fetchone()[0]
     cursor.execute("UPDATE test_ukoly SET stav = 'Probíhá' WHERE nazev = 'Úkol999'")
     conn.commit()
-    cursor.execute("SELECT COUNT(*) FROM test_ukoly WHERE stav = 'Probíhá'")
+    cursor.execute("SELECT COUNT(*) FROM test_ukoly WHERE stav = 'Nezahájeno'")
     konecny_pocet = cursor.fetchone()[0]
     assert puvodni_pocet == konecny_pocet, "Aktualizace neexistujícího záznamu změnila stav databáze."
 #testy pro odstranit_ukol
