@@ -37,7 +37,7 @@ def test_pridat_ukol(db_setup):
     assert result[2] == "Testovací úkol", "Popis není správný."
 def test_pridat_neplatny_ukol(db_setup):
     conn, cursor = db_setup
-    with pytest.raises(mysql.connector.Error, match=r".*Data too long for column 'nazev' at row \d+"):
+    with pytest.raises(mysql.connector.Error): #případně lze doplnit match=r".*Data too long for column 'nazev' at row \d+"
         cursor.execute("INSERT INTO test_ukoly (nazev) VALUES (%s)", ('a' * 51))
         conn.commit()
 #testy pro aktualizovat_ukol

@@ -1,5 +1,6 @@
 import mysql.connector
 from datetime import date
+#Připojení k lokální databázi
 def pripojeni_db():
     try:
         conn = mysql.connector.connect(
@@ -14,6 +15,7 @@ def pripojeni_db():
     except mysql.connector.Error as err:
         print(f"\nChyba při připojování: {err}")
         return None, None, err
+#Vytvoření tabulky, pokud už neexistuje
 def vytvoreni_tabulky(conn, cursor):
     try:
         cursor.execute('''
@@ -28,7 +30,8 @@ def vytvoreni_tabulky(conn, cursor):
         conn.commit()
         print("Tabulka 'ukoly' je připravena.\n")
     except mysql.connector.Error as err:
-        print(f"Chyba při vytváření tabulky: {err}")
+        print(f"\nChyba při vytváření tabulky: {err}")
+#Funkce pro inicializaci připojení a vytvoření tabulky
 def inicializace_pripojeni():
     conn, cursor, err = pripojeni_db()
     if conn is not None and cursor is not None:
@@ -37,6 +40,7 @@ def inicializace_pripojeni():
     else:
         print(f"\nChyba při připojování: {err}")
         return None, None
+#Funkce pro vytvoření úkolu, zadání názvu a popisu
 def pridat_ukol(conn, cursor):
     nazev_ukolu=input("\nZadejte název úkolu: ").strip()
     while not nazev_ukolu:
@@ -53,6 +57,7 @@ def pridat_ukol(conn, cursor):
         print(f"Úkol '{nazev_ukolu}' byl přidán.\n")
     except mysql.connector.Error as err:
         print(f"Chyba při vkládání dat: {err}\n")
+#Funkce zobrazí všechny úkoly, které jsou ve stavu Nezahájeno nebo Probíhá
 def zobrazit_ukoly(conn, cursor):
     cursor.execute("SELECT id, nazev, popis, stav FROM ukoly WHERE stav != 'Hotovo'")
     ukoly=cursor.fetchall()
@@ -63,9 +68,11 @@ def zobrazit_ukoly(conn, cursor):
     for row in ukoly: 
         print(f"ID: {row[0]} | Název: {row[1]} | Popis: {row[2]} | Stav: {row[3]}")
     print()
+#Funkce ověřuje, jestli existuje úkol s daným ID
 def existuje_ukol(cursor, id_ukolu):
     cursor.execute("SELECT 1 FROM ukoly WHERE id = %s", (id_ukolu,))
     return cursor.fetchone() is not None 
+#Funkce aktualizuje stav vybraného úkolu na Probíhá nebo Hotovo
 def aktualizovat_ukol(conn, cursor):
     cursor.execute("SELECT id, nazev, stav FROM ukoly")
     ukoly=cursor.fetchall()
@@ -96,6 +103,7 @@ def aktualizovat_ukol(conn, cursor):
                 print("Chyba. Úkol s tímto číslem neexistuje.")
         except ValueError:
             print("Zadejte prosím číslo.")
+#Funkce odstraní vybraný úkol
 def odstranit_ukol(conn, cursor):
     cursor.execute("SELECT id, nazev, popis, stav, datum FROM ukoly")
     ukoly=cursor.fetchall()
@@ -104,7 +112,7 @@ def odstranit_ukol(conn, cursor):
         return
     print("\nSeznam úkolů:")
     for row in ukoly:
-        print(f"{row[0]}. Název: {row[1]} | Popis: {row[2]} | Stav: {row[3]}| Datum založení: {row[4]}") 
+        print(f"{row[0]}. Název: {row[1]} | Popis: {row[2]} | Stav: {row[3]} | Datum založení: {row[4]}") 
     while True:
         try:
             id_ukolu=int(input("\nZadejte číslo úkolu, který chcete odstranit: ")) 
@@ -117,6 +125,7 @@ def odstranit_ukol(conn, cursor):
                 print("Chyba. Pokoušíte se smazat neexistující úkol.")
         except ValueError:
             print("Chyba. Zadejte platné číslo úkolu.")
+#Funkce Hlavního menu
 def hlavni_menu():
     conn, cursor = inicializace_pripojeni()
     while True:
